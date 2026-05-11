@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+deploy/inventory.yml
+deploy/secrets.yml
+*.retry
+data/
+.DS_Store

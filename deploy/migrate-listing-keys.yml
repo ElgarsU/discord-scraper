@@ -1,0 +1,92 @@
+# One-time DB migration to support per-source listing keys + auto24 mileage:
+#
+#   1. Adds the `mileage_km` column (used by auto24 ads).
+#   2. Renames legacy listing keys to the source-prefixed scheme:
+#        husqvarna-fe → ss-husqvarna-fe
+#        ktm-exc      → ss-ktm-exc
+#
+# Run ONCE before deploying the refactored code:
+#
+#   cd deploy
+#   ansible-playbook migrate-listing-keys.yml                 # for real
+#   ansible-playbook migrate-listing-keys.yml -e dry_run=true # preview only
+#
+# Idempotent: re-running is a no-op (ALTER TABLE failure on existing column is
+# tolerated; UPDATEs match nothing if already renamed).
+
+- name: One-time DB migration — add mileage column + rename listing keys
+  hosts: all
+  become: true
+  vars:
+    app_dir: /opt/discord-scraper
+    app_user: discord-scraper
+    db_path: "{{ app_dir }}/data/scraper.db"
+    dry_run: false
+
+  tasks:
+    - name: Stop scrape timer to avoid racing the migration
+      ansible.builtin.systemd:
+        name: discord-scraper.timer
+        state: stopped
+
+    - name: Show current listing_key counts
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: >-
+          sqlite3 -header -column {{ db_path }}
+          "SELECT listing_key, COUNT(*) FROM ads GROUP BY listing_key;"
+      register: pre_state
+      changed_when: false
+
+    - name: Pre-migration state
+      ansible.builtin.debug:
+        var: pre_state.stdout_lines
+
+    - name: Add mileage_km column (ignore if already exists)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: >-
+          sqlite3 {{ db_path }}
+          "ALTER TABLE ads ADD COLUMN mileage_km INTEGER;"
+      register: alter_result
+      failed_when:
+        - alter_result.rc != 0
+        - "'duplicate column name' not in alter_result.stderr"
+      changed_when: alter_result.rc == 0
+      when: not dry_run
+
+    - name: Rename husqvarna-fe → ss-husqvarna-fe
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: >-
+          sqlite3 {{ db_path }}
+          "UPDATE ads SET listing_key='ss-husqvarna-fe' WHERE listing_key='husqvarna-fe';"
+      changed_when: true
+      when: not dry_run
+
+    - name: Rename ktm-exc → ss-ktm-exc (no-op if KTM rows already cleaned)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: >-
+          sqlite3 {{ db_path }}
+          "UPDATE ads SET listing_key='ss-ktm-exc' WHERE listing_key='ktm-exc';"
+      changed_when: true
+      when: not dry_run
+
+    - name: Show post-migration listing_key counts
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: >-
+          sqlite3 -header -column {{ db_path }}
+          "SELECT listing_key, COUNT(*) FROM ads GROUP BY listing_key;"
+      register: post_state
+      changed_when: false
+
+    - name: Post-migration state
+      ansible.builtin.debug:
+        var: post_state.stdout_lines
+
+    - name: Restart scrape timer
+      ansible.builtin.systemd:
+        name: discord-scraper.timer
+        state: started
