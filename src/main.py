@@ -2,11 +2,9 @@ import sys
 import traceback
 
 from src import config, db, notifier
-from src.sources import NotFoundError, ScrapeError, auto24, autoplius, download_photos, ss
+from src.sources import NotFoundError, ScrapeError, download_photos, ss
 
-# mototehnika.ee runs on the same backend as auto24.ee — same HTML, same
-# selectors, same image CDN. Reuses the auto24 module by alias.
-SOURCES = {"ss": ss, "auto24": auto24, "mototehnika": auto24, "autoplius": autoplius}
+SOURCES = {"ss": ss}
 
 
 def process_url(url: str, slug: str, listing_key: str, source, webhook_url: str) -> str:

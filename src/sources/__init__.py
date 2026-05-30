@@ -15,7 +15,6 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 import httpx
-from curl_cffi import requests as cf_requests
 
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -70,8 +69,8 @@ class Ad:
     @property
     def hash(self) -> str:
         # When the source exposes a posted-at timestamp (ss.com), include it so
-        # bumping the ad changes the hash. When it doesn't (auto24), fall back
-        # to the slug — keeps the hash unique per ad while preserving
+        # bumping the ad changes the hash. When it doesn't, fall back to the
+        # slug — keeps the hash unique per ad while preserving
         # price-change-as-bump semantics.
         suffix = self.date_posted.isoformat() if self.date_posted else self.slug
         return hashlib.sha256(f"{self.price_eur}|{suffix}".encode()).hexdigest()
@@ -98,17 +97,6 @@ def http_get(url: str, *, timeout: float = 15.0) -> httpx.Response:
         raise NotFoundError(url)
     response.raise_for_status()
     return response
-
-
-def http_get_impersonate(url: str, *, timeout: float = 20.0) -> str:
-    """Fetch via curl_cffi with Chrome TLS fingerprint — bypasses Cloudflare bot
-    challenges for sites that 403 plain httpx from datacenter IPs (auto24,
-    autoplius, mototehnika)."""
-    response = cf_requests.get(url, impersonate="chrome", timeout=timeout)
-    if response.status_code == 404:
-        raise NotFoundError(url)
-    response.raise_for_status()
-    return response.text
 
 
 def download_photos(slug: str, photo_urls: list[str], images_dir: str) -> list[str]:

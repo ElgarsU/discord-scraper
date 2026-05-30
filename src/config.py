@@ -20,33 +20,6 @@ LISTINGS = [
         "engine_cc_in": [250, 350],
         "webhook_env": "DISCORD_WEBHOOK_HUSQVARNA_FE",
     },
-    {
-        "source": "auto24",
-        "key": "auto24-husqvarna-fe",
-        "name": "auto24.ee — Husqvarna FE 250/350",
-        "base_url": "https://www.auto24.ee/kasutatud/nimekiri.php?bn=2&a=100&b=345&af=100",
-        "model_contains": "fe",
-        "engine_cc_in": [250, 350],
-        "webhook_env": "DISCORD_WEBHOOK_AUTO24_HUSQVARNA_FE",
-    },
-    {
-        "source": "mototehnika",
-        "key": "mototehnika-husqvarna-fe",
-        "name": "mototehnika.ee — Husqvarna FE 250/350",
-        "base_url": "https://www.mototehnika.ee/kasutatud/nimekiri.php?bn=2&a=109&b=345&w1=250&w2=350&af=100",
-        "model_contains": "fe",
-        "engine_cc_in": [250, 350],
-        "webhook_env": "DISCORD_WEBHOOK_MOTOTEHNIKA_HUSQVARNA_FE",
-    },
-    {
-        "source": "autoplius",
-        "key": "autoplius-husqvarna-fe",
-        "name": "autoplius.lt — Husqvarna FE 250/350",
-        "base_url": "https://autoplius.lt/skelbimai/motociklai-moto-apranga/motociklai?make_id=1584&engine_capacity_from=250&engine_capacity_to=450",
-        "model_contains": "fe",
-        "engine_cc_in": [250, 350],
-        "webhook_env": "DISCORD_WEBHOOK_AUTOPLIUS_HUSQVARNA_FE",
-    },
 ]
 
 
