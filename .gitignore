@@ -7,3 +7,5 @@ deploy/secrets.yml
 *.retry
 data/
 .DS_Store
+dist/
+.idea/
