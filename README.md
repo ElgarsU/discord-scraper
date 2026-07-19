@@ -21,7 +21,12 @@ scripts, no secrets live here.
 
 - `build.sh` stages the source into `dist/`; infra builds the venv + installs
   the systemd service/timer on the VPS.
-- To deploy, from the infra repo: `./deploy.sh discord-scraper`.
+- To deploy, from the infra repo — **always `git pull` infra first** (deploys run
+  from the local infra checkout, so a stale checkout ships stale config), then:
+  ```bash
+  git -C ~/dev/infra pull --ff-only && (cd ~/dev/infra && ./deploy.sh discord-scraper)
+  ```
+  Also push this repo's changes to `main` first — the deploy clones `main`.
 - The Discord webhook lives in infra's `secrets/discord-scraper.env` (it was
   previously kept in the deploy tree — now centralized).
 

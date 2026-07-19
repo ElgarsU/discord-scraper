@@ -14,11 +14,24 @@ LISTINGS = [
     {
         "source": "ss",
         "key": "ss-husqvarna-fe",
-        "name": "ss.com — Husqvarna FE 250/350",
+        "name": "ss.com — Husqvarna TE 300 (2-stroke)",
         "base_url": "https://www.ss.com/lv/transport/moto-transport/motorcycles/husqvarna/",
-        "model_contains": "fe",
-        "engine_cc_in": [250, 350],
+        # "fe"/"te" both kept because sellers mislabel the model; the 300-only
+        # cc filter is what restricts this to the 2-stroke (TE 300).
+        "model_contains": ["fe", "te"],
+        "engine_cc_in": [300],
         "webhook_env": "DISCORD_WEBHOOK_HUSQVARNA_FE",
+    },
+    {
+        "source": "ss",
+        "key": "ss-ktm-exc",
+        "name": "ss.com — KTM EXC 300 (2-stroke)",
+        "base_url": "https://www.ss.com/lv/transport/moto-transport/motorcycles/ktm/",
+        # "exc" already substring-matches "exc-f"/"excf"; listed explicitly to
+        # document that mislabeled 4-stroke entries are intentionally caught.
+        "model_contains": ["exc", "exc-f", "excf"],
+        "engine_cc_in": [300],
+        "webhook_env": "DISCORD_WEBHOOK_KTM_EXC",
     },
 ]
 
