@@ -126,6 +126,10 @@ def _iter_search_rows(search: dict) -> Iterator[ListingRow]:
         params["topt[989][min]"] = str(search["cc_min"])
     if search.get("cc_max") is not None:
         params["topt[989][max]"] = str(search["cc_max"])
+    if search.get("price_min") is not None:
+        params["topt[8][min]"] = str(search["price_min"])
+    if search.get("price_max") is not None:
+        params["topt[8][max]"] = str(search["price_max"])
 
     # ss.com stores the search criteria in a server-side PHP session and
     # 302-redirects to the result page, so we need a cookie jar: GET the form to
@@ -158,11 +162,24 @@ def matches_filter(row: ListingRow, listing: dict) -> bool:
         if not any(n.lower() in haystack for n in needles):
             return False
 
+    # Excludes match the model column ONLY (not make) — negative filtering
+    # targets the "Modelis" field, and a short fragment like "na" must not knock
+    # out an entire make via e.g. "Husqvar-na".
     excludes = listing.get("model_excludes")
     if excludes:
         if isinstance(excludes, str):
             excludes = [excludes]
-        if any(x.lower() in haystack for x in excludes):
+        model_lower = (row.model or "").lower()
+        if any(x.lower() in model_lower for x in excludes):
+            return False
+
+    # Make-column negative filter — drop whole makes regardless of model.
+    make_excludes = listing.get("make_excludes")
+    if make_excludes:
+        if isinstance(make_excludes, str):
+            make_excludes = [make_excludes]
+        make_lower = (row.make or "").lower()
+        if any(x.lower() in make_lower for x in make_excludes):
             return False
 
     cc_in = listing.get("engine_cc_in")

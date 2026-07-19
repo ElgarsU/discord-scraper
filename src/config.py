@@ -58,6 +58,38 @@ LISTINGS = [
         "year_min": 2020,
         "webhook_env": "DISCORD_WEBHOOK_SHERCO_BETA",
     },
+    {
+        "source": "ss",
+        "key": "ss-125cc",
+        "name": "ss.com — 125cc (2018+, €2000–4000, negative-filtered)",
+        # Search across ALL makes: 125cc only, year >= 2018, €2000–4000. No
+        # positive (model_contains) filter — every result that survives the
+        # negative filter below is reported. The exclude list is curated by hand
+        # and grows over time to weed out unwanted models.
+        "search": {
+            "base_url": "https://www.ss.com/lv/transport/moto-transport/motorcycles/",
+            "year_min": 2018,
+            "cc_min": 125,
+            "cc_max": 125,
+            "price_min": 2000,
+            "price_max": 4000,
+        },
+        # Negative filter — matched against the Modelis column ONLY (see
+        # matches_filter). Drop an ad if its model contains any of these.
+        "model_excludes": [
+            "svartpilen", "duke", "ked", "dukka", "xsr", "mt", "niu",
+            "fantic", "zontes", "macbor", "dukkalon", "yzf", "hps", "blade",
+            "mondial", "duo", "renegade", "scrambler", "qj", "mutt", "aventura",
+            "tuono", "zt", "tourer", "dune", "mash", "black", "seventy", "xride",
+            "junak", "glr", "cbf", "superlight",
+            "cf125", "cb125", "flat track 125", "cf125nk", "gt-125", "keeway",
+            "nr125x", "n125v",
+        ],
+        # Make-column negative filter — drop these makes entirely.
+        "make_excludes": ["benelli", "cf moto"],
+        "year_min": 2018,
+        "webhook_env": "DISCORD_WEBHOOK_125CC",
+    },
 ]
 
 
