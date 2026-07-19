@@ -182,6 +182,16 @@ def matches_filter(row: ListingRow, listing: dict) -> bool:
         if any(x.lower() in make_lower for x in make_excludes):
             return False
 
+    # Compound negative filter — drop only when make AND model both match, e.g.
+    # ("ktm", "rc") kills the KTM RC but not other KTMs or other makes' RCs.
+    make_model_excludes = listing.get("make_model_excludes")
+    if make_model_excludes:
+        make_lower = (row.make or "").lower()
+        model_lower = (row.model or "").lower()
+        for mk, md in make_model_excludes:
+            if mk.lower() in make_lower and md.lower() in model_lower:
+                return False
+
     cc_in = listing.get("engine_cc_in")
     if cc_in and row.engine_cc not in cc_in:
         return False

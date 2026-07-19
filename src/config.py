@@ -84,9 +84,15 @@ LISTINGS = [
             "junak", "glr", "cbf", "superlight",
             "cf125", "cb125", "flat track 125", "cf125nk", "gt-125", "keeway",
             "nr125x", "n125v",
+            "zxt", "t125", "f125", "p-3.0",  # "Сp-3.0" uses a Cyrillic С; "p-3.0" matches both
         ],
         # Make-column negative filter — drop these makes entirely.
         "make_excludes": ["benelli", "cf moto"],
+        # Compound (make AND model) negative filter.
+        "make_model_excludes": [
+            ["ktm", "rc"],
+            ["honda", "cb"],
+        ],
         "year_min": 2018,
         "webhook_env": "DISCORD_WEBHOOK_125CC",
     },
