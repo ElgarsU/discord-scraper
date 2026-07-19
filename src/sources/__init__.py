@@ -1,6 +1,6 @@
 """Per-portal scraper modules. Each module exposes:
 
-    iter_all_rows(base_url) -> Iterator[ListingRow]
+    iter_all_rows(listing_config) -> Iterator[ListingRow]
     matches_filter(row, listing_config) -> bool
     fetch_ad(url) -> str
     parse_ad(html, url) -> Ad
@@ -89,6 +89,9 @@ class ListingRow:
     engine_cc: int | None
     price_text: str | None
     region: str | None
+    # Only the search-result listing carries a make column; per-make category
+    # pages leave this None (make is implied by the URL).
+    make: str | None = None
 
 
 def http_get(url: str, *, timeout: float = 15.0) -> httpx.Response:

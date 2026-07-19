@@ -33,6 +33,31 @@ LISTINGS = [
         "engine_cc_in": [300],
         "webhook_env": "DISCORD_WEBHOOK_KTM_EXC",
     },
+    {
+        "source": "ss",
+        "key": "ss-sherco-beta-gasgas",
+        "name": "ss.com — Sherco / Beta / GasGas 2-stroke (250–300cc, 2020+)",
+        # This source drives the ss.com search form across ALL makes (no per-make
+        # URL). The server does the coarse cut — year >= 2020 and 250–300cc — so
+        # the client-side needle match works on a small, mostly-relevant set.
+        "search": {
+            "base_url": "https://www.ss.com/lv/transport/moto-transport/motorcycles/",
+            "year_min": 2020,
+            "cc_min": 250,
+            "cc_max": 300,
+        },
+        # Brand + model-code fragments. Short ones (se/rr/ec/gas) are only safe
+        # because the 250–300cc server filter already removed the superbikes,
+        # motocross, and mowers they'd otherwise match. Matched against make+model.
+        "model_contains": ["se", "rr", "sherco", "beta", "ec", "gas", "gasgas", "gas gas"],
+        # Kill the residual look-alikes the short fragments still catch:
+        # "Hecht" (garden brand, via "ec"), "Berreta"/"Beretta" pit-bikes (via "rr").
+        "model_excludes": ["hecht", "berreta", "beretta"],
+        # Redundant with the server filter, but a cheap guard if the form ever
+        # returns an out-of-range row.
+        "year_min": 2020,
+        "webhook_env": "DISCORD_WEBHOOK_SHERCO_BETA",
+    },
 ]
 
 

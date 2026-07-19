@@ -58,7 +58,7 @@ def process_listing(listing_config: dict) -> bool:
     print(f"[{key}] fetching listing: {name}")
 
     try:
-        rows = list(source.iter_all_rows(listing_config["base_url"]))
+        rows = list(source.iter_all_rows(listing_config))
     except Exception as exc:
         print(f"[{key}] ERROR fetching listing: {exc}", file=sys.stderr)
         traceback.print_exc()

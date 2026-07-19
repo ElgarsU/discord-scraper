@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Iterator
 from urllib.parse import urljoin, urlparse
 
+import httpx
 from bs4 import BeautifulSoup
 
-from src.sources import Ad, ListingRow, RIGA, http_get
+from src.sources import Ad, HEADERS, ListingRow, RIGA, http_get
 
 
 # ---------- listing page ----------
@@ -20,7 +21,7 @@ def _to_int(value: str | None) -> int | None:
     return int(digits) if digits else None
 
 
-def _parse_rows(html: str, base_url: str) -> list[ListingRow]:
+def _parse_rows(html: str, base_url: str, has_make: bool = False) -> list[ListingRow]:
     soup = BeautifulSoup(html, "html.parser")
     rows: list[ListingRow] = []
     for tr in soup.find_all("tr"):
@@ -35,19 +36,26 @@ def _parse_rows(html: str, base_url: str) -> list[ListingRow]:
         slug = Path(urlparse(href).path).stem
 
         cells = tr.find_all("td", class_="msga2-o")
-        model = year = engine_cc = price_text = None
-        if len(cells) >= 4:
-            model = cells[0].get_text(strip=True) or None
-            year = _to_int(cells[1].get_text(strip=True))
-            engine_cc = _to_int(cells[2].get_text(strip=True))
-            price_text = cells[3].get_text(strip=True) or None
+        make = model = year = engine_cc = price_text = None
+        # Per-make category pages: [model, year, cc, price]. The search-result
+        # page carries an extra leading make column: [make, model, year, cc, price].
+        offset = 1 if has_make else 0
+        if len(cells) >= offset + 4:
+            if has_make:
+                make = cells[0].get_text(strip=True) or None
+            model = cells[offset].get_text(strip=True) or None
+            year = _to_int(cells[offset + 1].get_text(strip=True))
+            engine_cc = _to_int(cells[offset + 2].get_text(strip=True))
+            price_text = cells[offset + 3].get_text(strip=True) or None
 
         region = None
         region_div = tr.find("div", class_="ads_region")
         if region_div:
             region = region_div.get_text(strip=True)
 
-        rows.append(ListingRow(slug, url, model, year, engine_cc, price_text, region))
+        rows.append(
+            ListingRow(slug, url, model, year, engine_cc, price_text, region, make)
+        )
     return rows
 
 
@@ -61,7 +69,18 @@ def _discover_max_page(html: str) -> int:
     return max(nums) if nums else 1
 
 
-def iter_all_rows(base_url: str) -> Iterator[ListingRow]:
+def iter_all_rows(listing: dict) -> Iterator[ListingRow]:
+    """Yield every listing row for a source config. A config with a ``search``
+    block drives the ss.com search form (all makes, server-side cc/year
+    filtering); otherwise it paginates a per-make category ``base_url``."""
+    search = listing.get("search")
+    if search:
+        yield from _iter_search_rows(search)
+    else:
+        yield from _iter_category_rows(listing["base_url"])
+
+
+def _iter_category_rows(base_url: str) -> Iterator[ListingRow]:
     if not base_url.endswith("/"):
         base_url += "/"
     page_one = http_get(base_url).text
@@ -72,19 +91,88 @@ def iter_all_rows(base_url: str) -> Iterator[ListingRow]:
         yield from _parse_rows(html, base_url)
 
 
+# The search form POSTs every field; unset ones must still be present (empty or
+# "0"). Notably the make field ``opt[227][]`` is OMITTED entirely — sending it
+# empty makes ss.com return zero results. cc/year get overwritten per config.
+_SEARCH_DEFAULT_PARAMS = {
+    "txt": "",
+    "topt[24]": "",
+    "topt[18][min]": "0",  # year min
+    "topt[18][max]": "0",  # year max (0 = any)
+    "topt[989][min]": "",  # engine cc min
+    "topt[989][max]": "",  # engine cc max
+    "topt[8][min]": "",  # price min
+    "topt[8][max]": "",  # price max
+    "sid": "",
+    "search_region": "0",
+    "pr": "0",
+    "sort": "0",
+}
+
+
+def _iter_search_rows(search: dict) -> Iterator[ListingRow]:
+    base = search["base_url"]
+    if not base.endswith("/"):
+        base += "/"
+    form_url = base + "search/"
+    result_url = base + "search-result/"
+
+    params = dict(_SEARCH_DEFAULT_PARAMS)
+    if search.get("year_min") is not None:
+        params["topt[18][min]"] = str(search["year_min"])
+    if search.get("year_max") is not None:
+        params["topt[18][max]"] = str(search["year_max"])
+    if search.get("cc_min") is not None:
+        params["topt[989][min]"] = str(search["cc_min"])
+    if search.get("cc_max") is not None:
+        params["topt[989][max]"] = str(search["cc_max"])
+
+    # ss.com stores the search criteria in a server-side PHP session and
+    # 302-redirects to the result page, so we need a cookie jar: GET the form to
+    # seed the session, POST the criteria, then paginate within the same client.
+    with httpx.Client(headers=HEADERS, timeout=15.0, follow_redirects=True) as client:
+        client.get(form_url)
+        first = client.post(result_url, data=params, headers={"Referer": form_url})
+        first.raise_for_status()
+        yield from _parse_rows(first.text, result_url, has_make=True)
+        last_page = _discover_max_page(first.text)
+        for n in range(2, last_page + 1):
+            page = client.get(
+                result_url + f"page{n}.html", headers={"Referer": result_url}
+            )
+            page.raise_for_status()
+            yield from _parse_rows(page.text, result_url, has_make=True)
+
+
 def matches_filter(row: ListingRow, listing: dict) -> bool:
+    # Match against make + model so needles/excludes can hit either. On category
+    # pages make is None, so this collapses to the model text (unchanged behavior).
+    haystack = " ".join(p for p in (row.make, row.model) if p).lower()
+
     needles = listing.get("model_contains")
     if needles:
         if isinstance(needles, str):
             needles = [needles]
-        if not row.model:
+        if not haystack:
             return False
-        model_lower = row.model.lower()
-        if not any(n.lower() in model_lower for n in needles):
+        if not any(n.lower() in haystack for n in needles):
             return False
+
+    excludes = listing.get("model_excludes")
+    if excludes:
+        if isinstance(excludes, str):
+            excludes = [excludes]
+        if any(x.lower() in haystack for x in excludes):
+            return False
+
     cc_in = listing.get("engine_cc_in")
     if cc_in and row.engine_cc not in cc_in:
         return False
+
+    year_min = listing.get("year_min")
+    if year_min is not None and row.year is not None and row.year < year_min:
+        return False
+
     return True
 
 
